@@ -54,7 +54,8 @@ function onOpen() {
   SpreadsheetApp
     .getUi()
     .createMenu('임원신청 관리')
-    .addItem('출력용 명단 생성', 'createPrintSheets')
+    .addItem('출력용 명단 생성 (전체 새로고침)', 'createPrintSheets')
+    .addItem('출력용 명단에 새 신청자만 추가 (빠름)', 'appendNewToPrintSheet')
     .addToUi();
 }
 
@@ -117,7 +118,7 @@ function submitForm(data) {
     recommender,
     '동의',
     data.applicationDate || '',
-    data.isMember ? '예' : ''
+    data.isMember ? 'O' : 'X'
   ];
 
   let targetRow;
@@ -257,6 +258,113 @@ function createPrintSheets() {
   SpreadsheetApp.getUi().alert('출력용 명단 생성이 완료되었습니다.');
 }
 
+/**
+ * "출력용_명단"을 통째로 다시 만들지 않고, 그 사이 새로 늘어난
+ * 신청자만 뒤에 이어붙인다. 사람이 많아질수록 매번 전체를 다시
+ * 만드는 게 느려지는 문제를 해결하기 위한 빠른 버전.
+ *
+ * 주의: 이미 명단에 들어간 사람이 정보를 수정해서 재제출한 경우는
+ * 감지하지 못한다(새로 늘어난 행인지만 확인하기 때문). 그런 수정
+ * 사항까지 반영하려면 가끔 '전체 새로고침'을 한 번씩 돌려줘야 한다.
+ */
+function appendNewToPrintSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sourceSheet = ss.getSheetByName(SHEET_NAME);
+  const ui = SpreadsheetApp.getUi();
+
+  if (!sourceSheet) {
+    ui.alert('임원신청서 시트가 존재하지 않습니다.');
+    return;
+  }
+
+  const lastRow = sourceSheet.getLastRow();
+  if (lastRow < 2) {
+    ui.alert('제출된 신청서 데이터가 없습니다.');
+    return;
+  }
+
+  let printSheet = ss.getSheetByName(PRINT_SHEET_NAME);
+  if (!printSheet) {
+    // 출력용 명단이 아직 없으면 처음이니 전체 생성으로 진행
+    createPrintSheets();
+    return;
+  }
+
+  const printLastRow = printSheet.getLastRow();
+  const alreadyCount = printLastRow < 2 ? 0 : printLastRow - 1; // 이미 명단에 있는 인원
+  const totalCount = lastRow - 1; // 원본에 있는 전체 인원
+
+  if (alreadyCount >= totalCount) {
+    ui.alert('추가할 새 신청자가 없습니다. (이미 최신 상태입니다)');
+    return;
+  }
+
+  const newCount = totalCount - alreadyCount;
+  const startSourceRow = 2 + alreadyCount;
+  const sourceData = sourceSheet.getRange(startSourceRow, 1, newCount, HEADERS.length).getValues();
+
+  const printData = [];
+  const photoUrls = [];
+  const signatureUrls = [];
+
+  for (let i = 0; i < sourceData.length; i++) {
+    const row = sourceData[i];
+    const sourceRow = startSourceRow + i;
+
+    const photoUrl = getMediaUrlFromCell_(sourceSheet.getRange(sourceRow, 3));
+    const signatureUrl = getMediaUrlFromCell_(sourceSheet.getRange(sourceRow, 11));
+
+    printData.push([
+      row[0], row[1], '', row[3], row[4], row[5], row[6],
+      row[7], row[8], row[9], '', row[11], row[12], row[13], row[14]
+    ]);
+
+    photoUrls.push(photoUrl);
+    signatureUrls.push(signatureUrl);
+  }
+
+  const startPrintRow = printLastRow + 1;
+  printSheet.getRange(startPrintRow, 1, printData.length, HEADERS.length).setValues(printData);
+  printSheet.getRange(startPrintRow, 1, printData.length, HEADERS.length)
+    .setBorder(true, true, true, true, true, true)
+    .setVerticalAlignment('middle')
+    .setHorizontalAlignment('center')
+    .setWrap(true);
+
+  for (let i = 0; i < printData.length; i++) {
+    const targetRow = startPrintRow + i;
+
+    if (photoUrls[i]) {
+      const pId = extractDriveFileId_(photoUrls[i]);
+      if (pId) {
+        try {
+          const img = SpreadsheetApp.newCellImage()
+            .setSourceUrl('https://drive.google.com/uc?export=view&id=' + pId)
+            .build();
+          printSheet.getRange(targetRow, 3).setValue(img);
+        } catch (e) {}
+      }
+    }
+
+    if (signatureUrls[i]) {
+      const sId = extractDriveFileId_(signatureUrls[i]);
+      if (sId) {
+        try {
+          const img = SpreadsheetApp.newCellImage()
+            .setSourceUrl('https://drive.google.com/uc?export=view&id=' + sId)
+            .build();
+          printSheet.getRange(targetRow, 11).setValue(img);
+        } catch (e) {}
+      }
+    }
+
+    printSheet.setRowHeight(targetRow, 110);
+  }
+
+  SpreadsheetApp.flush();
+  ui.alert(printData.length + '명의 신청자가 새로 추가되었습니다.');
+}
+
 function prepareMainSheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(SHEET_NAME);
@@ -265,6 +373,15 @@ function prepareMainSheet_() {
     sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
     sheet.getRange(1, 1, 1, HEADERS.length).setBackground('#f3f3f3').setFontWeight('bold').setHorizontalAlignment('center');
     sheet.setFrozenRows(1);
+  } else {
+    // 나중에 HEADERS에 컬럼이 새로 추가됐는데(예: 책임당원 여부),
+    // 시트는 그 이전에 이미 만들어져 있던 경우 헤더가 옛날 상태로 남아있을 수 있다.
+    // 헤더 칸 수가 HEADERS보다 적으면 자동으로 최신 헤더로 다시 써준다.
+    const existingLastCol = sheet.getLastColumn();
+    if (existingLastCol < HEADERS.length) {
+      sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+      sheet.getRange(1, 1, 1, HEADERS.length).setBackground('#f3f3f3').setFontWeight('bold').setHorizontalAlignment('center');
+    }
   }
   return sheet;
 }
