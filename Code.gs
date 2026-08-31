@@ -15,7 +15,8 @@ const HEADERS = [
   '서명',
   '추천인',
   '개인정보 수집ㆍ이용 동의',
-  '신청일'
+  '신청일',
+  '책임당원 여부'
 ];
 
 function doGet() {
@@ -63,6 +64,7 @@ function onOpen() {
  */
 function submitForm(data) {
   if (!data) throw new Error('입력 정보를 확인해 주세요.');
+  if (!data.isMember) throw new Error('국민의힘 책임당원 여부에 체크해 주세요.');
   if (!data.name) throw new Error('성명을 입력해 주세요.');
   if (!data.position1) throw new Error('희망직책 1지망을 선택해 주세요.');
   if (!data.position2) throw new Error('희망직책 2지망을 선택해 주세요.');
@@ -114,7 +116,8 @@ function submitForm(data) {
     signatureUrl,
     recommender,
     '동의',
-    data.applicationDate || ''
+    data.applicationDate || '',
+    data.isMember ? '예' : ''
   ];
 
   let targetRow;
@@ -209,7 +212,7 @@ function createPrintSheets() {
     // 텍스트를 완전히 빈칸("")으로 처리하여 문구 제거
     printData.push([
       row[0], row[1], '', row[3], row[4], row[5], row[6],
-      row[7], row[8], row[9], '', row[11], row[12], row[13]
+      row[7], row[8], row[9], '', row[11], row[12], row[13], row[14]
     ]);
 
     photoUrls.push(photoUrl);
@@ -330,7 +333,7 @@ function setupPrintSheetStyle_(sheet, dataCount) {
     .setHorizontalAlignment('center')
     .setWrap(true);
   sheet.getRange(1, 1, 1, HEADERS.length).setBackground('#f3f3f3').setFontWeight('bold');
-  const widths = [55, 75, 120, 120, 120, 100, 260, 120, 180, 220, 180, 150, 180, 100];
+  const widths = [55, 75, 120, 120, 120, 100, 260, 120, 180, 220, 180, 150, 180, 100, 110];
   widths.forEach((w, i) => sheet.setColumnWidth(i + 1, w));
   sheet.setRowHeight(1, 35);
   sheet.setFrozenRows(1);
