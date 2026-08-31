@@ -399,6 +399,11 @@ textarea {
   margin-top: 20px;
 }
 
+.member-check-box {
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+
 .agree-row {
   display: flex;
   align-items: flex-start;
@@ -415,6 +420,44 @@ textarea {
   margin-top: 1px;
   accent-color: #E61E2B;
   cursor: pointer;
+}
+
+/* 문의사항 */
+.contact-box {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+}
+.contact-box h3 {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #888;
+  margin: 0 0 8px;
+}
+.contact-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.contact-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 2px;
+  font-size: 15px;
+  color: #333;
+  border-bottom: 1px solid #f2f2f2;
+}
+.contact-list li:last-child {
+  border-bottom: none;
+}
+.contact-name {
+  font-weight: 600;
+}
+.contact-phone {
+  color: #E61E2B;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 /* 제출 */
@@ -757,6 +800,21 @@ textarea {
 <strong>＊</strong> 표시가 있는 항목은 <strong>반드시</strong> 입력해야 합니다.
 </div>
 
+<!-- 책임당원 여부 확인 -->
+<div class="agree-box member-check-box">
+  <label class="agree-row" for="isMember">
+    <input
+      id="isMember"
+      type="checkbox"
+    >
+    <span>
+      본인은 <b>국민의힘 책임당원</b>입니다.
+      (책임당원이 아니신 경우 임원 신청 대상이 아닙니다)
+      <span class="required">＊필수</span>
+    </span>
+  </label>
+</div>
+
 <!-- 성명 -->
 <label for="name">
 성명 <span class="required">＊필수</span>
@@ -1058,6 +1116,17 @@ textarea {
   role="alert"
   aria-live="assertive"
 ></div>
+
+<!-- 문의사항 -->
+<div class="contact-box">
+  <h3>문의사항</h3>
+  <ul class="contact-list">
+    <li>
+      <span class="contact-name">정희도 본부장</span>
+      <a href="tel:010-3219-0999" class="contact-phone">010-3219-0999</a>
+    </li>
+  </ul>
+</div>
 
 </div>
 
@@ -1881,9 +1950,32 @@ function searchAddress() {
 /* =========================
    입력 서식 제어 (한글 차단)
 ========================= */
-document.getElementById('name').addEventListener('input', function() {
-  this.value = this.value.replace(/[^가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z\s]/g, '');
-});
+/* =========================
+   입력 서식 제어 (한글 차단)
+   - 기존 정규식(ㅏ-ㅣ)에는 'ㆍ'(아래아, U+318D)가 빠져 있어서,
+     천지인 키보드에서 ㆍ로 모음을 조합할 때(예: ㅣ+ㆍ=ㅏ) 매 입력마다
+     ㆍ가 지워지며 조합이 깨지는 문제가 있었음.
+   - 한글 호환 자모 전체 범위(ㄱ~ㆎ, U+3131–U+318E)로 넓혀서 해결.
+   - 추가로, IME 조합 중(compositionstart~compositionend)에는 필터링을
+     하지 않도록 해서 조합 자체를 건드리지 않게 함(조합 끝난 뒤에만 정리).
+========================= */
+(function() {
+  const nameInput = document.getElementById('name');
+  let nameComposing = false;
+  const NAME_ALLOWED = /[^\uAC00-\uD7A3\u3131-\u318Ea-zA-Z\s]/g;
+
+  nameInput.addEventListener('compositionstart', function() {
+    nameComposing = true;
+  });
+  nameInput.addEventListener('compositionend', function() {
+    nameComposing = false;
+    this.value = this.value.replace(NAME_ALLOWED, '');
+  });
+  nameInput.addEventListener('input', function() {
+    if (nameComposing) return; // 조합 중에는 값을 건드리지 않음
+    this.value = this.value.replace(NAME_ALLOWED, '');
+  });
+})();
 
 document.getElementById('birth').addEventListener('input', function() {
   // 숫자만 남긴 뒤 그룹 사이에만 점을 넣는다.
@@ -2181,6 +2273,7 @@ async function submitApplication() {
 
   if (btn.disabled) return;
 
+  const isMember = document.getElementById('isMember').checked;
   const name = document.getElementById('name').value.trim();
   const position1 = document.getElementById('position1').value;
   const position2 = document.getElementById('position2').value;
@@ -2197,6 +2290,7 @@ async function submitApplication() {
   const agree = document.getElementById('agree').checked;
   const applicationDate = document.getElementById('applicationDate').textContent;
 
+  if (!isMember) { showError('국민의힘 책임당원 여부에 체크해 주세요. 책임당원만 임원 신청이 가능합니다.', 'isMember'); return; }
   if (!name) { showError('성명을 입력해 주세요.', 'name'); return; }
   if (!position1) { showError('희망직책 1지망을 선택해 주세요.', 'position1'); return; }
   if (!position2) { showError('희망직책 2지망을 선택해 주세요.', 'position2'); return; }
@@ -2204,7 +2298,7 @@ async function submitApplication() {
   if (!validBirth(birth)) { showError('생년월일을 8자리 숫자로 정확하게 입력해 주세요. 예: 1955.03.08', 'birth'); return; }
   if (!address) { showError('‘주소 검색’ 버튼을 눌러 주소를 찾아 주세요.', 'address'); return; }
   if (!detailAddress) { showError('상세주소(동/호수)를 입력해 주세요. 예: 101동 1203호', 'detailAddress'); return; }
-  if (!/^01[0-9]-\d{3,4}-\d{4}$/.test(phone)) { showError('핸드폰 번호를 정확하게 입력해 주세요. 예: 010-1234-5678', 'phone'); return; }
+  if (!/^01[0-9]-\d{3,4}-\d{4}$/.test(콜)) { showError('핸드폰 번호를 정확하게 입력해 주세요. 예: 010-1234-5678', 'phone'); return; }
   if (!emailId) { showError('이메일 아이디를 입력해 주세요.', 'emailId'); return; }
   if (emailId.includes('@')) { showError('이메일 아이디에는 @를 입력하지 마세요.', 'emailId'); return; }
   if (/[^a-zA-Z0-9._-]/.test(emailId)) { showError('이메일 아이디는 영문과 숫자만 사용할 수 있습니다.', 'emailId'); return; }
@@ -2261,6 +2355,7 @@ async function submitApplication() {
 
   const fullAddress = address + ' ' + detailAddress;
   const data = {
+    isMember: isMember,
     name: name,
     position1: position1,
     position2: position2,
