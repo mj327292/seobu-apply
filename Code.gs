@@ -15,8 +15,7 @@ const HEADERS = [
   '서명',
   '추천인',
   '개인정보 수집ㆍ이용 동의',
-  '신청일',
-  '책임당원 여부'
+  '신청일'
 ];
 
 function doGet() {
@@ -117,8 +116,7 @@ function submitForm(data) {
     signatureUrl,
     recommender,
     '동의',
-    data.applicationDate || '',
-    data.isMember ? 'O' : 'X'
+    data.applicationDate || ''
   ];
 
   let targetRow;
@@ -213,7 +211,7 @@ function createPrintSheets() {
     // 텍스트를 완전히 빈칸("")으로 처리하여 문구 제거
     printData.push([
       row[0], row[1], '', row[3], row[4], row[5], row[6],
-      row[7], row[8], row[9], '', row[11], row[12], row[13], row[14]
+      row[7], row[8], row[9], '', row[11], row[12], row[13]
     ]);
 
     photoUrls.push(photoUrl);
@@ -316,7 +314,7 @@ function appendNewToPrintSheet() {
 
     printData.push([
       row[0], row[1], '', row[3], row[4], row[5], row[6],
-      row[7], row[8], row[9], '', row[11], row[12], row[13], row[14]
+      row[7], row[8], row[9], '', row[11], row[12], row[13]
     ]);
 
     photoUrls.push(photoUrl);
@@ -374,8 +372,8 @@ function prepareMainSheet_() {
     sheet.getRange(1, 1, 1, HEADERS.length).setBackground('#f3f3f3').setFontWeight('bold').setHorizontalAlignment('center');
     sheet.setFrozenRows(1);
   } else {
-    // 나중에 HEADERS에 컬럼이 새로 추가됐는데(예: 책임당원 여부),
-    // 시트는 그 이전에 이미 만들어져 있던 경우 헤더가 옛날 상태로 남아있을 수 있다.
+    // 나중에 HEADERS에 컬럼이 새로 추가/변경됐는데, 시트는 그 이전에
+    // 이미 만들어져 있던 경우 헤더가 옛날 상태로 남아있을 수 있다.
     // 헤더 칸 수가 HEADERS보다 적으면 자동으로 최신 헤더로 다시 써준다.
     const existingLastCol = sheet.getLastColumn();
     if (existingLastCol < HEADERS.length) {
@@ -450,7 +448,7 @@ function setupPrintSheetStyle_(sheet, dataCount) {
     .setHorizontalAlignment('center')
     .setWrap(true);
   sheet.getRange(1, 1, 1, HEADERS.length).setBackground('#f3f3f3').setFontWeight('bold');
-  const widths = [55, 75, 120, 120, 120, 100, 260, 120, 180, 220, 180, 150, 180, 100, 110];
+  const widths = [55, 75, 120, 120, 120, 100, 260, 120, 180, 220, 180, 150, 180, 100];
   widths.forEach((w, i) => sheet.setColumnWidth(i + 1, w));
   sheet.setRowHeight(1, 35);
   sheet.setFrozenRows(1);
