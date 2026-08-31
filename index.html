@@ -2298,7 +2298,7 @@ async function submitApplication() {
   if (!validBirth(birth)) { showError('생년월일을 8자리 숫자로 정확하게 입력해 주세요. 예: 1955.03.08', 'birth'); return; }
   if (!address) { showError('‘주소 검색’ 버튼을 눌러 주소를 찾아 주세요.', 'address'); return; }
   if (!detailAddress) { showError('상세주소(동/호수)를 입력해 주세요. 예: 101동 1203호', 'detailAddress'); return; }
-  if (!/^01[0-9]-\d{3,4}-\d{4}$/.test(콜)) { showError('핸드폰 번호를 정확하게 입력해 주세요. 예: 010-1234-5678', 'phone'); return; }
+  if (!/^01[0-9]-\d{3,4}-\d{4}$/.test(phone)) { showError('핸드폰 번호를 정확하게 입력해 주세요. 예: 010-1234-5678', 'phone'); return; }
   if (!emailId) { showError('이메일 아이디를 입력해 주세요.', 'emailId'); return; }
   if (emailId.includes('@')) { showError('이메일 아이디에는 @를 입력하지 마세요.', 'emailId'); return; }
   if (/[^a-zA-Z0-9._-]/.test(emailId)) { showError('이메일 아이디는 영문과 숫자만 사용할 수 있습니다.', 'emailId'); return; }
