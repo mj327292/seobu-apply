@@ -827,6 +827,17 @@ textarea {
   autocomplete="name"
 >
 
+<!-- 직업 -->
+<label for="occupation">
+직업 <span class="required">＊필수</span>
+</label>
+<input
+  id="occupation"
+  type="text"
+  maxlength="30"
+  placeholder="예: 회사원"
+>
+
 <!-- 사진 -->
 <label for="photo">
 사진 <span class="required">＊필수</span>
@@ -2275,6 +2286,7 @@ async function submitApplication() {
 
   const isMember = document.getElementById('isMember').checked;
   const name = document.getElementById('name').value.trim();
+  const occupation = document.getElementById('occupation').value.trim();
   const position1 = document.getElementById('position1').value;
   const position2 = document.getElementById('position2').value;
   const birth = document.getElementById('birth').value;
@@ -2292,6 +2304,7 @@ async function submitApplication() {
 
   if (!isMember) { showError('국민의힘 책임당원 여부에 체크해 주세요. 책임당원만 임원 신청이 가능합니다.', 'isMember'); return; }
   if (!name) { showError('성명을 입력해 주세요.', 'name'); return; }
+  if (!occupation) { showError('직업을 입력해 주세요.', 'occupation'); return; }
   if (!position1) { showError('희망직책 1지망을 선택해 주세요.', 'position1'); return; }
   if (!position2) { showError('희망직책 2지망을 선택해 주세요.', 'position2'); return; }
   if (position1 === position2) { showError('1지망과 2지망은 다른 직책을 선택해 주세요.', 'position2'); return; }
@@ -2368,6 +2381,7 @@ async function submitApplication() {
   const data = {
     isMember: isMember,
     name: name,
+    occupation: occupation,
     position1: position1,
     position2: position2,
     birth: birth,
